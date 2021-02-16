@@ -159,7 +159,7 @@ public void OnMapStart()
 	char Dosya_Konumu[1000];
 	Format(Dosya_Konumu, 999, "sound/alispw77/son5saniye.mp3");
 	AddFileToDownloadsTable(Dosya_Konumu);	
-	PrecacheSoundAny("aliswp77/son5saniye.mp3");
+	PrecacheSoundAny("alispw77/son5saniye.mp3");
 }
 
 public void OnClientPostAdminCheck(int client)

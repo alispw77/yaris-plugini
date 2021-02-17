@@ -1,7 +1,5 @@
 #pragma semicolon 1
-
 #define DEBUG
-
 #define PLUGIN_AUTHOR "ali<.d"
 #define PLUGIN_VERSION "1.00"
 
@@ -47,7 +45,6 @@ float startloc[3],
 	finishloc[3];
 
 /////////////////////////////////////////////
-
 int koyulan_markerlar;
 float ikinciloc[3];
 bool i_marker[MAXPLAYERS + 1];
@@ -55,44 +52,47 @@ float ucunculoc[3];
 bool u_marker[MAXPLAYERS + 1];
 float dordunculoc[3];
 bool d_marker[MAXPLAYERS + 1];
-
 ////////////////////////////////////////////SQL
 Handle g_hDB = INVALID_HANDLE;
 char g_sSQLBuffer[3096];
 bool g_bIsMySQl;
 bool g_bChecked[MAXPLAYERS + 1];
 Handle gF_OnInsertNewPlayer;
-
 //////////////////////////
-void Sifirla()
-{
+
+void Sifirla(){
 	yarisoyunu = false;
 	ses = false;
-	if (bunnyh)
-	{
+	if (bunnyh){
 		ServerCommand("sm_cvar sv_enablebunnyhopping 1;sm_cvar abner_bhop 1;sm_cvar sv_airaccelerate 2000");
 		bunnyh = false;
 	}
 	koyulan_markerlar = 0;
-	startloc[0] = 0.0, startloc[1] = 0.0, startloc[2] = 0.0;
-	finishloc[0] = 0.0, finishloc[1] = 0.0, finishloc[2] = 0.0;
-	ikinciloc[0] = 0.0, ikinciloc[1] = 0.0, ikinciloc[2] = 0.0;
-	ucunculoc[0] = 0.0, ucunculoc[1] = 0.0, ucunculoc[2] = 0.0;
-	dordunculoc[0] = 0.0, dordunculoc[1] = 0.0, dordunculoc[2] = 0.0;
+	for (int i = 0; i < 3; i++){
+		startloc[i] = 0.0;
+		finishloc[i] = 0.0;
+		ikinciloc[i] = 0.0;
+		ucunculoc[i] = 0.0;
+		dordunculoc[i] = 0.0;
+	}
 	kacinci = 1;
-	CloseHandle(g_CountdownTimer);
-	CloseHandle(g_RaceTimer);
-	CloseHandle(g_drawTimer);
-	g_drawTimer = INVALID_HANDLE;
-	g_CountdownTimer = INVALID_HANDLE;
-	g_RaceTimer = INVALID_HANDLE;
+	if(g_CountdownTimer){
+		CloseHandle(g_CountdownTimer);
+		g_CountdownTimer = INVALID_HANDLE;
+	}
+	if(g_RaceTimer){
+		CloseHandle(g_RaceTimer);
+		g_RaceTimer = INVALID_HANDLE;
+	}
+	if(g_drawTimer){
+		CloseHandle(g_drawTimer);
+		g_drawTimer = INVALID_HANDLE;
+	}
 	bCountdownUsed = false;
 	bIsRace = false;
 	int i = 1;
-	while (i <= MaxClients)
-	{
-		if (IsClientInGame(i))
-		{
+	while (i <= MaxClients){
+		if (IsClientInGame(i)){
 			Yapti[i] = false;
 			i_marker[i] = false;
 			u_marker[i] = false;
@@ -107,8 +107,7 @@ void Sifirla()
 	}
 }
 ///////////////////////////////
-public Plugin myinfo = 
-{
+public Plugin myinfo ={
 	name = "Yarış Yapak mı ?",
 	author = PLUGIN_AUTHOR,
 	description = "Fazla umuttur her şeyi mahveden.",
@@ -116,94 +115,76 @@ public Plugin myinfo =
 	url = "https://steamcommunity.com/id/alikoc77"
 };
 
-public void OnPluginStart()
-{
+public void OnPluginStart(){
 	RegConsoleCmd("sm_yaris", command_race);
 	RegConsoleCmd("sm_yarisiptal", command_cancelrace);
 	RegConsoleCmd("sm_topyaris", command_topyaris);
 	RegAdminCmd("sm_topyarisreset", Command_Sifirlayalimbakalim, ADMFLAG_ROOT);
 	g_tag1 = CreateConVar("tag_yaris", "SM", "Pluginleri başında olmasını istediğiniz tag", FCVAR_NOTIFY);
 	HookEvent("round_end", end);
-	for (int i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i)) {
-	  	  SDKHook(i, SDKHook_SetTransmit, Hook_SetTransmit);
+	for (int i = 1; i <= MaxClients; i++){
+		if (IsClientInGame(i)){
+			SDKHook(i, SDKHook_SetTransmit, Hook_SetTransmit);
 		}
 	}
 	AutoExecConfig(true, "Yaris", "alispw77");
 	SQL_TConnect(OnSQLConnect, "Yaris");
 }
 
-public void OnPluginEnd()
-{
-	for(int client = 1; client <= MaxClients; client++)
-	{
-		if(IsClientInGame(client))
-		{
+public void OnPluginEnd(){
+	for(int client = 1; client <= MaxClients; client++){
+		if(IsClientInGame(client)){
 			OnClientDisconnect(client);
 		}
 	}
 }
 
-public void OnMapStart()
-{
+public void OnMapStart(){
 	Sifirla();
 	GetConVarString(g_tag1, tag1, sizeof(tag1));
 	BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
 	HaloSprite = PrecacheModel("materials/sprites/glow01.vmt");
 	LaserSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
 	LaserHalo = PrecacheModel("materials/sprites/light_glow01.vmt");
-	if (g_CountdownTimer != INVALID_HANDLE)
-	{
-		g_CountdownTimer = INVALID_HANDLE;
-	}
+	if (g_CountdownTimer != INVALID_HANDLE)g_CountdownTimer = INVALID_HANDLE;
 	char Dosya_Konumu[1000];
 	Format(Dosya_Konumu, 999, "sound/alispw77/son5saniye.mp3");
 	AddFileToDownloadsTable(Dosya_Konumu);	
 	PrecacheSoundAny("alispw77/son5saniye.mp3");
 }
 
-public void OnClientPostAdminCheck(int client)
-{
+public void OnClientPostAdminCheck(int client){
 	if(!IsFakeClient(client)) CheckSQLSteamID(client);
 }
-
-public void OnClientDisconnect(int client)
-{
+public void OnClientDisconnect(int client){
 	if(!IsFakeClient(client) && g_bChecked[client]) SaveSQLCookies(client);
 }
 
-public Action command_topyaris(int client, int args)
-{
-	ShowTotal(client);
+public Action command_topyaris(int client, int args){
+	if(client != 0)ShowTotal(client);
 }
 
-public Action command_cancelrace(int client, int args)
-{
-	if (warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT))
-	{
-		if (yarisoyunu == true)
-		{
+public Action command_cancelrace(int client, int args){
+	if (client == 0)return;
+	if (warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT)){
+		if (yarisoyunu == true){
 			CPrintToChatAll("[%s] {orange}Yarış Oyunu İptal Edildi", tag1);
 			PrintCenterText(client, "Yarış Oyunu İptal Edildi");			
 			Sifirla();
 		}
-		else
-		{
+		else{
 			Sifirla();
 		}
 	}
-	else
-	{
-		CPrintToChat(client, "[%s] {orange}Bu komutu sadece komutçu kullanabilir.",tag1);
+	else{
+		CPrintToChat(client, "[%s] {orange}Bu komutu sadece komutçu kullanabilir.", tag1);
 	}
 }
 
-public Action command_race(int client, int args)
-{
-	if (warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT))
-	{
-		if (yarisoyunu == false)
-		{
+public Action command_race(int client, int args){
+	if (client == 0)return;
+	if (warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT)){
+		if (yarisoyunu == false){
 			Sifirla();
 			Handle racemenu1 = CreateMenu(RaceStartPointHandler);
 			SetMenuTitle(racemenu1, "Başlangıç Konumu Ayarlayın");
@@ -212,33 +193,26 @@ public Action command_race(int client, int args)
 			AddMenuItem(racemenu1, "startloc", sMenuText);
 			SetMenuExitButton(racemenu1, true);
 			DisplayMenu(racemenu1, client, MENU_TIME_FOREVER);						
-			for (int idx = 1; idx <= MaxClients; idx++)
-			{
-				if (IsClientInGame(idx) && IsPlayerAlive(idx))
-				{
+			for (int idx = 1; idx <= MaxClients; idx++){
+				if (IsClientInGame(idx) && IsPlayerAlive(idx)){
 					CPrintToChat(idx, "[%s] {orange}Yarış Yakında Başlayacak", tag1);
 				}
 			}
 		}
-		else
-		{
+		else{
 			CPrintToChat(client, "[%s] {orange}Zaten bir yarış aktif lütfen önce kapatınız [ !yarisiptal ]", tag1);
 		}
 	}
-	else
-	{
+	else{
 		CPrintToChat(client, "[%s] {orange}Bu komutu sadece komutçu kullanabilir.",tag1);
 	}
 }
 
-public int RaceStartPointHandler(Handle menu, MenuAction action, int client, int param2)
-{
-	if (action == MenuAction_Select)
-	{
-		if (IsPlayerAlive(client) && warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT))
-		{
-			if (GetEntityFlags(client) & FL_ONGROUND)
-			{
+public int RaceStartPointHandler(Handle menu, MenuAction action, int client, int param2){
+	if (client == 0)return;
+	if (action == MenuAction_Select){
+		if (IsPlayerAlive(client) && warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT)){
+			if (GetEntityFlags(client) & FL_ONGROUND){
 				float f_StartPoint[3];
 				GetClientAbsOrigin(client, f_StartPoint);
 				f_StartPoint[2] += 10;
@@ -250,30 +224,26 @@ public int RaceStartPointHandler(Handle menu, MenuAction action, int client, int
 				g_drawTimer = CreateTimer(1.0, Timer_draw, _, TIMER_REPEAT);
 				CreateRaceExtraPointMenu(client);
 			}
-			else
-			{
+			else{
 				CPrintToChat(client, "[%s] {orange}Hareket etmeden sabit durunuz.", tag1);
 				CreateRaceExtraPointMenu(client);
 			}
 		}
-		else
-		{
+		else{
 			CPrintToChat(client, "[%s] {orange}Bu komutu sadece komutçu kullanabilir.", tag1);
 		}
 	}
-	else if (action == MenuAction_End)
-	{
+	else if (action == MenuAction_End){
 		CloseHandle(menu);
 	}
 }
 
-void CreateRaceExtraPointMenu(int client)
-{
+void CreateRaceExtraPointMenu(int client){
+	if (client == 0)return;
 	Handle EndPointMenu = CreateMenu(RaceExtraPointHandler);
 	SetMenuTitle(EndPointMenu, "Extra Yarış Noktasını Ayarla");
 	char sMenuText[64];
-	if (koyulan_markerlar < 4)
-	{
+	if (koyulan_markerlar < 4){
 		Format(sMenuText, sizeof(sMenuText), "Extra Nokta-Mevcut Konumu Ayarla");
 		AddMenuItem(EndPointMenu, "extrapoint", sMenuText);
 	}
@@ -283,18 +253,14 @@ void CreateRaceExtraPointMenu(int client)
 	DisplayMenu(EndPointMenu, client, MENU_TIME_FOREVER);
 }
 
-public int RaceExtraPointHandler(Handle menu, MenuAction action, int client, int param2)
-{
+public int RaceExtraPointHandler(Handle menu, MenuAction action, int client, int param2){
+	if (client == 0)return;
 	char info[64];
-	if (action == MenuAction_Select)
-	{
+	if (action == MenuAction_Select){
 		GetMenuItem(menu, param2, info, 64);
-		if (StrEqual(info, "extrapoint", false))
-		{
-			if (IsPlayerAlive(client) && warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT))
-			{
-				if (GetEntityFlags(client) & FL_ONGROUND)
-				{
+		if (StrEqual(info, "extrapoint", false)){
+			if (IsPlayerAlive(client) && warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT)){
+				if (GetEntityFlags(client) & FL_ONGROUND){
 					float f_ExtLocation[3];
 					GetClientAbsOrigin(client, f_ExtLocation);
 					f_ExtLocation[2] += 10;
@@ -327,43 +293,35 @@ public int RaceExtraPointHandler(Handle menu, MenuAction action, int client, int
 						f_StartLocation[2] = ucunculoc[2];
 					}					
 					float distanceBetweenPoints = GetVectorDistance(f_StartLocation, f_ExtLocation, false);
-					
-					if (distanceBetweenPoints > 150.0)
-					{
+					if (distanceBetweenPoints > 150.0){
 						koyulan_markerlar++;
 						CPrintToChat(client, "[%s] {orange}%i. Marker Kaydedildi.", tag1, koyulan_markerlar);
 						CreateRaceExtraPointMenu(client);
 					}
-					else
-					{
+					else{
 						CPrintToChat(client, "[%s] {orange} Koyulan iki nokta birbirine çok yakın", tag1);
 						CreateRaceExtraPointMenu(client);
 					}
 				}
-				else
-				{
+				else{
 					CPrintToChat(client, "[%s] {orange}Hareket etmeden sabit durunuz.", tag1);
 					CreateRaceExtraPointMenu(client);
 				}
 			}
-			else
-			{
+			else{
 				CPrintToChat(client, "[%s] {orange}Bu komutu sadece komutçu kullanabilir.", tag1);
 			}			
 		}
-		else if (StrEqual(info, "endpoint", false))
-		{
-			if (IsPlayerAlive(client) && warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT))
-			{
-				if (GetEntityFlags(client) & FL_ONGROUND)
-				{
+		else if (StrEqual(info, "endpoint", false)){
+			if (IsPlayerAlive(client) && warden_iswarden(client) || CheckCommandAccess(client, "mycommand", ADMFLAG_ROOT)){
+				if (GetEntityFlags(client) & FL_ONGROUND){
 					float f_EndLocation[3];
 					GetClientAbsOrigin(client, f_EndLocation);
 					f_EndLocation[2] += 10;
 					float f_StartLocation[3];
 					finishloc[0] = f_EndLocation[0];
 					finishloc[1] = f_EndLocation[1];
-					finishloc[2] = f_EndLocation[2];				
+					finishloc[2] = f_EndLocation[2];
 					if (koyulan_markerlar == 1)
 					{
 						f_StartLocation[0] = startloc[0];
@@ -389,40 +347,33 @@ public int RaceExtraPointHandler(Handle menu, MenuAction action, int client, int
 						f_StartLocation[2] = dordunculoc[2];
 					}				
 					float distanceBetweenPoints = GetVectorDistance(f_StartLocation, f_EndLocation, false);
-					
-					if (distanceBetweenPoints > 200.0)
-					{
+					if (distanceBetweenPoints > 200.0){
 						Kac_kisi_bitircek(client);
 					}
-					else
-					{
+					else{
 						CPrintToChat(client, "[%s] {orange}Bitiş noktası diğer noktalara çok yakın", tag1);
 						CreateRaceExtraPointMenu(client);
 					}
 				}
-				else
-				{
+				else{
 					CPrintToChat(client, "[%s] {orange}Hareket etmeden sabit durunuz.", tag1);
 					CreateRaceExtraPointMenu(client);
 				}
 			}
-			else
-			{
+			else{
 				CPrintToChat(client, "[%s] {orange}Bu komutu sadece komutçu kullanabilir.", tag1);
 			}
 		}
 	}
-	else if (action == MenuAction_End)
-	{
+	else if (action == MenuAction_End){
 		CloseHandle(menu);
 	}	
 }
 
-void Kac_kisi_bitircek(int client)
-{
+void Kac_kisi_bitircek(int client){
+	if (client == 0)return;
 	int yasayant;
-	for (int i = 1; i <= MaxClients; i++)
-	{
+	for (int i = 1; i <= MaxClients; i++){
 		if (IsClientInGame(i) && IsPlayerAlive(i) && !IsFakeClient(i) && GetClientTeam(i) == 2)
 			yasayant++;
 	}
@@ -438,29 +389,26 @@ void Kac_kisi_bitircek(int client)
 		AddMenuItem(menu, "5", "İlk 5");
 	if (yasayant > 9)
 		AddMenuItem(menu, "10", "İlk 10");
-		
 	SetMenuExitButton(menu, true);
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);	
 }
 
-public int menu_kackisi(Handle menu, MenuAction action, int client, int param2)
-{
-	if (action == MenuAction_Select)
-	{
+public int menu_kackisi(Handle menu, MenuAction action, int client, int param2){
+	if (client == 0)return;
+	if (action == MenuAction_Select){
 		char info[32];
 		GetMenuItem(menu, param2, info, sizeof(info));
 		ilkkac = StringToInt(info);
 		CPrintToChatAll("[%s] {orange}Yarışı İlk {green}%s {orange}bitirecek şekilde ayarlandı.", tag1, info);
 		oleceklermi(client);
 	}
-	else if (action == MenuAction_End)
-	{
+	else if (action == MenuAction_End){
 		CloseHandle(menu);
 	}	
 }
 
-void oleceklermi(int client)
-{
+void oleceklermi(int client){
+	if (client == 0)return;
 	Handle menu = CreateMenu(menu_olecekmi);
 	SetMenuTitle(menu, "Yapamayanlar?");
 	AddMenuItem(menu, "1", "Ölsün");
@@ -470,37 +418,33 @@ void oleceklermi(int client)
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);	
 }
 
-public int menu_olecekmi(Handle menu, MenuAction action, int client, int param2)
-{
-	if (action == MenuAction_Select)
-	{
+public int menu_olecekmi(Handle menu, MenuAction action, int client, int param2){
+	if (client == 0)return;
+	if (action == MenuAction_Select){
 		char info[32];
 		GetMenuItem(menu, param2, info, sizeof(info));
-		if (StrEqual(info, "1"))
-		{
+		if (StrEqual(info, "1")){
 			olsunler = true;
 			CPrintToChatAll("[%s] {orange}Yarışı bitiremeyenler {darkred}Ölsün {orange}olarak ayarlandı.", tag1);
 		}
-		else if (StrEqual(info, "0"))
-		{
+		else if (StrEqual(info, "0")){
 			olsunler = false;
 			CPrintToChatAll("[%s] {orange}Yarışı bitiremeyenler {darkred}Ölmesin {orange}olarak ayarlandı.", tag1);
 		}
 		bunnyvarmi1(client);
 	}
-	else if (action == MenuAction_End)
-	{
+	else if (action == MenuAction_End){
 		CloseHandle(menu);
 	}
-	else if (action == MenuAction_Cancel)
-		if (param2 == MenuCancel_ExitBack)
-	{
-		Kac_kisi_bitircek(client);
+	else if (action == MenuAction_Cancel){
+		if (param2 == MenuCancel_ExitBack){
+			Kac_kisi_bitircek(client);
+		}
 	}	
 }
 
-void bunnyvarmi1(int client)
-{
+void bunnyvarmi1(int client){
+	if (client == 0)return;
 	Handle menu = CreateMenu(menu_bunny);
 	SetMenuTitle(menu, "Bunny Hop?");
 	AddMenuItem(menu, "0", "Kapalı");
@@ -542,8 +486,7 @@ public int menu_bunny(Handle menu, MenuAction action, int client, int param2)
 	}	
 }
 
-void InitializeGame()
-{
+void InitializeGame(){
 	float f_StartLocation[3];
 	f_StartLocation[0] = startloc[0];
 	f_StartLocation[1] = startloc[1];
@@ -569,12 +512,9 @@ void InitializeGame()
 	}
 }
 
-void bilgilendirme()
-{
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == 2)
-		{		
+void bilgilendirme(){
+	for (int i = 1; i <= MaxClients; i++){
+		if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == 2){
 			Handle hHudText = CreateHudSynchronizer();
 			SetHudTextParams(-1.0, -0.60, 3.0, 255, 0, 0, 0, 2, 1.0, 0.1, 0.2);	
 			ShowSyncHudText(i, hHudText, "Yarış Oyunu Başlamak Üzere\nGösterilen Yolu En Önce Bitirerek\nYarışı Kazanmalısın");
@@ -583,12 +523,10 @@ void bilgilendirme()
 	}
 }
 
-public Action Timer_draw(Handle timer)
-{
+public Action Timer_draw(Handle timer){
 	DrawMarkers();
 }
-public Action Timer_Countdown_(Handle timer)
-{
+public Action Timer_Countdown_(Handle timer){
 	float LR_Prisoner_Positioncd[3];
 	if (koyulan_markerlar == 1)
 	{
@@ -854,8 +792,7 @@ public Action Timer_Race(Handle timer)
 	return Plugin_Continue;
 }
 
-void DrawMarkers()
-{
+void DrawMarkers(){
 	int randomcolor[4];
 	randomcolor[3] = 255;	
 	if (startloc[0] != 0.0)
@@ -914,8 +851,7 @@ void DrawMarkers()
 	}
 }
 
-void Ekran_Renk_Olustur(int client, int Renk1, int Renk2, int Renk3, int Renk4)
-{
+void Ekran_Renk_Olustur(int client, int Renk1, int Renk2, int Renk3, int Renk4){
 	int clients[2];
 	clients[0] = client;
 	int Sure = 200;
@@ -949,8 +885,7 @@ void Ekran_Renk_Olustur(int client, int Renk1, int Renk2, int Renk3, int Renk4)
 	return;
 }
 
-stock void StripAllWeapons(int client)
-{
+stock void StripAllWeapons(int client){
 	int wepIdx;
 	for (int i; i < 4; i++)
 	{
@@ -963,13 +898,11 @@ stock void StripAllWeapons(int client)
 	GivePlayerItem(client, "weapon_knife");
 }
 
-public void end(Handle event, const char[] name, bool dontBroadcast)
-{
+public void end(Handle event, const char[] name, bool dontBroadcast){
 	Sifirla();
 }
 
-public Action Hook_SetTransmit(int iClient, int iOther)
-{
+public Action Hook_SetTransmit(int iClient, int iOther){
     if (yarisoyunu && iClient != iOther && GetClientTeam(iClient) == 2 && GetClientTeam(iOther) == 2)
     {
         return Plugin_Handled;
@@ -977,8 +910,7 @@ public Action Hook_SetTransmit(int iClient, int iOther)
     return Plugin_Continue;
 }
 
-public int OnSQLConnect(Handle owner, Handle hndl, char [] error, any data)
-{
+public int OnSQLConnect(Handle owner, Handle hndl, char [] error, any data){
 	if(hndl == INVALID_HANDLE)
 	{
 		LogError("Database failure: %s", error);
@@ -1007,8 +939,7 @@ public int OnSQLConnect(Handle owner, Handle hndl, char [] error, any data)
 	}
 }
 //////SQL
-public int OnSQLConnectCallback(Handle owner, Handle hndl, char [] error, any data)
-{
+public int OnSQLConnectCallback(Handle owner, Handle hndl, char [] error, any data){
 	if(hndl == INVALID_HANDLE)
 	{
 		LogError("Query failure: %s", error);
@@ -1024,8 +955,7 @@ public int OnSQLConnectCallback(Handle owner, Handle hndl, char [] error, any da
 	}
 }
 
-public void SaveSQLCookies(int client)
-{
+public void SaveSQLCookies(int client){
 	char steamid[32];
 	GetClientAuthId(client, AuthId_Steam2,steamid, sizeof(steamid) );
 	char Name[MAX_NAME_LENGTH+1];
@@ -1044,8 +974,7 @@ public void SaveSQLCookies(int client)
 	g_bChecked[client] = false;
 }
 
-public void CheckSQLSteamID(int client)
-{
+public void CheckSQLSteamID(int client){
 	char query[255], steamid[32];
 	GetClientAuthId(client, AuthId_Steam2,steamid, sizeof(steamid) );
 	
@@ -1053,13 +982,9 @@ public void CheckSQLSteamID(int client)
 	SQL_TQuery(g_hDB, CheckSQLSteamIDCallback, query, GetClientUserId(client));
 }
 
-public int CheckSQLSteamIDCallback(Handle owner, Handle hndl, char [] error, any data)
-{
+public int CheckSQLSteamIDCallback(Handle owner, Handle hndl, char [] error, any data){
 	int client;
-	
-	
-	if((client = GetClientOfUserId(data)) == 0)
-	{
+	if((client = GetClientOfUserId(data)) == 0){
 		return;
 	}
 	
@@ -1078,8 +1003,7 @@ public int CheckSQLSteamIDCallback(Handle owner, Handle hndl, char [] error, any
 	g_bChecked[client] = true;
 }
 
-public void InsertSQLNewPlayer(int client)
-{
+public void InsertSQLNewPlayer(int client){
 	char query[255], steamid[32];
 	GetClientAuthId(client, AuthId_Steam2,steamid, sizeof(steamid));
 	int userid = GetClientUserId(client);
@@ -1105,16 +1029,14 @@ public void InsertSQLNewPlayer(int client)
 	g_bChecked[client] = true;
 }
 
-public int SaveSQLPlayerCallback(Handle owner, Handle hndl, char [] error, any data)
-{
+public int SaveSQLPlayerCallback(Handle owner, Handle hndl, char [] error, any data){
 	if(hndl == INVALID_HANDLE)
 	{
 		LogError("Query failure: %s", error);
 	}
 }
 
-public void ShowTotal(int client)
-{
+public void ShowTotal(int client){
 	if(g_hDB != INVALID_HANDLE)
 	{
 		char buffer[200];
@@ -1127,8 +1049,7 @@ public void ShowTotal(int client)
 	}
 }
 
-public int ShowTotalCallback(Handle owner, Handle hndl, char [] error, any client)
-{
+public int ShowTotalCallback(Handle owner, Handle hndl, char [] error, any client){
 	if(hndl == INVALID_HANDLE)
 	{
 		LogError(error);
@@ -1167,23 +1088,20 @@ public int ShowTotalCallback(Handle owner, Handle hndl, char [] error, any clien
 	menu2.Display(client, MENU_TIME_FOREVER);
 }
 
-public int DIDMenuHandler2(Menu menu2, MenuAction action, int client, int itemNum) 
-{
+public int DIDMenuHandler2(Menu menu2, MenuAction action, int client, int itemNum) {
 	if(action == MenuAction_End){
 		delete menu2;
 	}
 }
 
-public Action Command_Sifirlayalimbakalim(int client, int args)
-{
+public Action Command_Sifirlayalimbakalim(int client, int args){
 	PrintToChat(client, "Yariş Verileri sıfırlandı, dene bakalim");
 	char buffer[200];
 	Format(buffer, sizeof(buffer), "SELECT playername, total, steamid FROM yaris ORDER BY total DESC LIMIT 99999");
 	SilHepsiniAmk();
 }
 
-public void SilHepsiniAmk()
-{
+public void SilHepsiniAmk(){
     if(g_hDB == INVALID_HANDLE)
     {
         return;
